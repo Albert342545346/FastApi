@@ -85,7 +85,7 @@ def login(body: Login, response: Response):
     if body.username != USER_DATA["username"] or body.password != USER_DATA["password"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     
-    token = uuid.uuid4().hex
+    token = uuid.uuid4()
 
     response.set_cookie(
         key="session_token",
