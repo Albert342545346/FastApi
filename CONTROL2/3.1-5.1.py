@@ -1,7 +1,9 @@
 from fastapi import FastAPI, HTTPException, Query, Cookie, Depends, status, HTTPException, Request, Response
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional, List, Annotated
+from fastapi.responses import JSONResponse
 from fastapi.security import HTTPBasic, HTTPBasicCredentials
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 import uuid
 
 app = FastAPI()
@@ -67,25 +69,25 @@ def get_search(
 
 
 
-sessions = {} # 5.1
+sessions = {} #5.1
 
 USER_DATA = {
     "username": "user",
     "password": "password"
 }
 
-
 class Login(BaseModel):
     username: str
     password: str
-
 
 @app.post("/login")
 def login(body: Login, response: Response):
     if body.username != USER_DATA["username"] or body.password != USER_DATA["password"]:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
     
-    token = uuid.uuid4()
+    token = uuid.uuid4().hex
+    
+    sessions[token] = {"username": body.username}
 
     response.set_cookie(
         key="session_token",
@@ -93,7 +95,15 @@ def login(body: Login, response: Response):
         max_age=1800,
         httponly=True,
         secure=False,
-        samesite="lax"
     )
 
     return {"message": "Login successful"}
+
+@app.get("/user")
+def get_user(session_token: Optional[str] = Cookie(None)):
+    if not session_token or session_token not in sessions:
+        return JSONResponse(status_code=401, content={"message": "Unauthorized"})
+    return {"profile": sessions[session_token]}
+
+
+
